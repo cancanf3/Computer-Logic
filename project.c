@@ -1,3 +1,9 @@
+/* Author: Jose Pena
+ * NID: 4142431
+ * PID: jo676717
+ * Project: Mini Processor Simulator
+ */
+
 #include "spimcore.h"
 
 
@@ -6,6 +12,43 @@
 void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 {
 
+	// ALU Operations
+	switch ((int)ALUControl) 
+	{
+		case 000 :
+			*ALUresult = A + B;
+			break;
+
+		case 001:
+			*ALUresult = A - B;
+			break;
+		case 010:
+			if ((signed) A < (signed) B)
+				*ALUresult = 1;
+			else
+				*ALUresult = 0;
+			break;
+		case 011:
+			if (A < B)
+				*ALUresult = 1;
+			else
+				*ALUresult = 0;
+			break;
+		case 100;
+			*ALUresult = A & B;
+			break;
+		case 101
+			*ALUresult = A | B;
+			break;
+		case 110
+			B = B << 16;
+			break;
+	}
+
+	if (*ALUControl == 0)
+		*Zero = 1;
+	else 
+		*Zero = 0;
 }
 
 /* instruction fetch */
