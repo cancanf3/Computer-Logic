@@ -44,7 +44,7 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 			break;
 	}
 
-	if (*ALUControl == 0)
+	if (ALUControl == 0)
 		*Zero = 1;
 	else 
 		*Zero = 0;
@@ -54,9 +54,10 @@ void ALU(unsigned A,unsigned B,char ALUControl,unsigned *ALUresult,char *Zero)
 /* 10 Points */
 int instruction_fetch(unsigned PC,unsigned *Mem,unsigned *instruction)
 {
-	if (PC % 4 == 0) 
+	unsigned index = PC >> 2;
+	if (index % 4 == 0) 
 	{
-		*instruction = Mem[PC];
+		*instruction = Mem[index];
 		return 0;
 	}
 	else
@@ -101,7 +102,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 0;
+			controls->ALUOp = 000;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 1;
@@ -113,7 +114,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 1;
 			controls->MemtoReg = 1;
-			controls->ALUOp = 0;
+			controls->ALUOp = 000;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 1;
@@ -125,7 +126,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 2;
-			controls->ALUOp = 0;
+			controls->ALUOp = 000;
 			controls->MemWrite = 1;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 0;
@@ -137,7 +138,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 1;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 6;
+			controls->ALUOp = 110;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 1;
@@ -149,7 +150,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 1;
 			controls->MemRead = 0;
 			controls->MemtoReg = 2;
-			controls->ALUOp = 1;
+			controls->ALUOp = 001;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 0;
 			controls->RegWrite = 0;
@@ -161,7 +162,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 2;
+			controls->ALUOp = 010;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 1;
@@ -173,19 +174,19 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 3;
+			controls->ALUOp = 011;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 1;
 			controls->RegWrite = 1;
 			break;
 		case 0x2:
 			//jump
-			controls->RegDst = 0;
+			controls->RegDst = 2;
 			controls->Jump = 1;
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 0;
+			controls->ALUOp = 000;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 0;
 			controls->RegWrite = 0;
@@ -197,7 +198,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 			controls->Branch = 0;
 			controls->MemRead = 0;
 			controls->MemtoReg = 0;
-			controls->ALUOp = 7;
+			controls->ALUOp = 111;
 			controls->MemWrite = 0;
 			controls->ALUSrc = 0;
 			controls->RegWrite = 1;
@@ -205,6 +206,7 @@ int instruction_decode(unsigned op,struct_controls *controls)
 		default:
 			return 1;
 	}
+	return 0;
 }
 
 /* Read Register */
@@ -225,21 +227,72 @@ void sign_extend(unsigned offset,unsigned *extended_value)
 	if (negative == 1)
 		*extended_value = offset | 0xFFFF0000;
 	else
-		*extended_value = offset | 0xFFFF0000;
+		*extended_value = offset & 0x0000FFFF;
 }
 
 /* ALU operations */
 /* 10 Points */
 int ALU_operations(unsigned data1,unsigned data2,unsigned extended_value,unsigned funct,char ALUOp,char ALUSrc,unsigned *ALUresult,char *Zero)
-{
+{	
+	if (ALUSrc == 1)
+		data2 = extended_value;
 	
+	// R-Type
+	if (ALUOp == 0)
+	{
+		switch (funct) 
+		{
+			case 0x20:
+				//Add
+				ALUOp = 000;
+				break;
+			case 0x22:
+				//Sub/
+				ALUOp = 001;
+				break;
+			case 0x24:
+				//and/
+				ALUOp = 100;
+				break;
+			case 0x25:
+				//or/
+				ALUOp = 101;
+				break;
+			case 0x2A:
+				//slt
+				ALUOp = 011;
+				break;
+			case 0x2B:
+				//sltu
+				ALUOp = 010;
+				break;
+			default:
+				return 1;
+		}
+	}
+	ALU(data1, data2, ALUOp, ALUresult, Zero);
+
+	return 0;
+
 }
 
 /* Read / Write Memory */
 /* 10 Points */
 int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsigned *memdata,unsigned *Mem)
 {
-
+	if ((int)MemWrite) 
+	{
+		if (ALUresult % 4 != 0)
+			return 1;
+		Mem[ALUresult >> 2] = data2;
+	}
+	else if ((int)MemRead)
+	{
+		if (ALUresult % 4 != 0)
+			return 1;
+		*memdata = Mem[ALUresult >> 2];
+	}
+	return 0;
 }
 
 
@@ -247,13 +300,37 @@ int rw_memory(unsigned ALUresult,unsigned data2,char MemWrite,char MemRead,unsig
 /* 10 Points */
 void write_register(unsigned r2,unsigned r3,unsigned memdata,unsigned ALUresult,char RegWrite,char RegDst,char MemtoReg,unsigned *Reg)
 {
+	if (RegDst == 1) 
+	{
+		//Mem to Register
+		if (MemtoReg == 1 && RegDst == 0)
+			Reg[r2] = memdata;
 
+		//Mem to Register r3
+		else if(MemtoReg == 1 && RegDst == 1)
+			Reg[r3] = memdata;
+     
+		//Result to Register
+		else if (MemtoReg == 0 && RegDst == 0)
+			Reg[r2] = ALUresult;
+                  
+		//Result to Register r3
+		else if (MemtoReg == 0 && RegDst == 1)
+			Reg[r3] = ALUresult;
+	}
 }
 
 /* PC update */
 /* 10 Points */
 void PC_update(unsigned jsec,unsigned extended_value,char Branch,char Jump,char Zero,unsigned *PC)
 {
-
+	//increment by 4 
+	*PC += 4;
+	//branching
+	if(Zero == 1 && Branch == 1)
+		*PC += extended_value << 2;
+	//Jumping shift Instruction and combine with PC
+	if(Jump == 1)
+		*PC = (jsec << 2) | (*PC & 0xf0000000);
 }
 
